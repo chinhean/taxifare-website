@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import datetime
 import requests
+import pydeck as pdk
 
 # '''
 # # TaxiFareModel front
@@ -51,14 +52,10 @@ import requests
 # ## Finally, we can display the prediction to the user
 # '''
 
-st.header("Taxi Fare Estimator", divider=True)
+# Layout to hold the map and inputs
+st.set_page_config(layout="wide")
 
-# - date and time
-# - pickup longitude
-# - pickup latitude
-# - dropoff longitude
-# - dropoff latitude
-# - passenger count
+st.header("Taxi Fare Estimator", divider=True)
 
 # User inputs date and time
 col1, col2 = st.columns(2)
@@ -116,6 +113,82 @@ st.write("Selected Date and Time:", selected_datetime)
 st.write("Pickup location:", pickup_lon, ",", pickup_lat)
 st.write("Dropoff location:", dropoff_lon, ",", dropoff_lat)
 st.write("Number of passengers:", passenger_count)
+
+
+# Start play with ChatGPT
+
+# Create a route layer to visualize the route from pickup to dropoff
+route_data = [
+    [pickup_lon, pickup_lat],  # Pickup point
+    [dropoff_lon, dropoff_lat]  # Dropoff point
+]
+
+# Create the map with route
+view_state = pdk.ViewState(
+    latitude=(pickup_lat + dropoff_lat) / 2,
+    longitude=(pickup_lon + dropoff_lon) / 2,
+    zoom=12,
+    pitch=0,
+)
+
+# Create the route line (bold and clear)
+route_layer = pdk.Layer(
+    "PathLayer",
+    data=[{"path": route_data}],  # Path data in the correct format
+    get_path="path",
+    get_width=8,  # Increased width
+    get_color=[255, 0, 0],  # Red color for better visibility
+)
+
+# Solid Circle for Start (with dotted effect)
+start_marker = pdk.Layer(
+    "ScatterplotLayer",
+    data=[{"coordinate": [pickup_lon, pickup_lat]}],
+    get_position="coordinate",
+    get_radius=120,  # Radius of the circle
+    get_fill_color=[0, 255, 0, 255],  # Green color for the start point
+    get_line_color=[0, 255, 0],  # Green color for the outline
+    get_line_width=4,  # Dotted effect (via line width)
+    pickable=True,
+)
+
+# Solid Circle for End
+end_marker = pdk.Layer(
+    "ScatterplotLayer",
+    data=[{"coordinate": [dropoff_lon, dropoff_lat]}],
+    get_position="coordinate",
+    get_radius=120,  # Radius of the circle
+    get_fill_color=[255, 0, 0, 255],  # Red color for the solid circle
+    get_line_color=[255, 0, 0],  # Red color for the outline
+    get_line_width=3,  # Solid line for the end point
+    pickable=True,
+)
+
+# Add letters "S" and "E" as text labels
+text_layer = pdk.Layer(
+    "TextLayer",
+    data=[
+        {"position": [pickup_lon, pickup_lat], "text": "S", "size": 24, "color": [0, 0, 0]},
+        {"position": [dropoff_lon, dropoff_lat], "text": "E", "size": 24, "color": [0, 0, 0]},
+    ],
+    get_position="position",
+    get_text="text",
+    get_size="size",
+    get_color="color",
+    pickable=True
+)
+
+# Create the deck with the route layer and markers
+deck = pdk.Deck(
+    layers=[route_layer, start_marker, end_marker, text_layer],
+    initial_view_state=view_state,
+    map_style="mapbox://styles/mapbox/streets-v11"
+)
+
+# Display the map immediately when the user inputs the data
+st.pydeck_chart(deck)
+
+# End play with ChatGPT
 
 
 if st.button(label='Click to predict'):
